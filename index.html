@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Recreated Video — Animation Demo</title>
+  <style>
+    /* ---------- Basic page reset ---------- */
+    * {box-sizing: border-box; margin: 0; padding: 0;}
+    html,body {height: 100%; background: #000;}
+
+    /* ---------- Layout ---------- */
+    .stage {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ---------- Background gradient and subtle noise-like overlay ---------- */
+    .bg {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(10,10,20,1) 0%, rgba(20,10,40,1) 100%);
+      z-index: 0;
+    }
+    .vignette {
+      position:absolute; inset:0; pointer-events:none;
+      background: radial-gradient(60% 60% at 50% 40%, rgba(0,0,0,0) 0%, rgba(0,0,0,0.45) 60%, rgba(0,0,0,0.75) 100%);
+      z-index:2;
+    }
+
+    /* ---------- Intro black overlay that fades out ---------- */
+    .intro-cover {
+      position: absolute; inset: 0; background: #000; z-index: 6;
+      display:flex; align-items:center; justify-content:center;
+      color:#fff; font-weight:600; letter-spacing:0.06em;
+      font-size: clamp(18px, 2.8vw, 28px);
+      opacity: 1;
+      animation: introFade 1.2s ease-out 0.3s forwards;
+    }
+    @keyframes introFade {
+      to { opacity: 0; visibility: hidden; transform: translateY(-8px); }
+    }
+
+    /* ---------- Center card that holds the photo and text ---------- */
+    .card {
+      position: relative;
+      width: min(1100px, 94%);
+      height: min(620px, 78vh);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      align-items: center;
+      z-index: 3;
+      padding: 30px;
+    }
+
+    /* ---------- Left side: photo container ---------- */
+    .photo-wrap {
+      position: relative;
+      height: 100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow: visible;
+    }
+
+    /* circular photo mask and shadow */
+    .photo {
+      width: clamp(260px, 36vw, 420px);
+      height: clamp(260px, 36vw, 420px);
+      border-radius: 999px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 6px 18px rgba(0,0,0,0.5);
+      transform-origin: center center;
+      background: #222;
+      border: 6px solid rgba(255,255,255,0.06);
+      z-index: 4;
+      /* Start off-screen left and animate in */
+      transform: translateX(-160%) scale(0.95);
+      opacity: 0;
+      animation: photoIn 0.9s cubic-bezier(.2,.95,.2,1) 0.9s forwards;
+    }
+
+    .photo img {
+      width:100%;
+      height:100%;
+      object-fit: cover;
+      display:block;
+      transform-origin: center center;
+      /* gentle pan/zoom animation - will start after photo appears */
+      animation: photoPan 8s ease-in-out 1.6s forwards;
+    }
+
+    @keyframes photoIn {
+      to { transform: translateX(0) scale(1); opacity: 1; }
+    }
+
+    @keyframes photoPan {
+      0% { transform: scale(1) translateY(0); }
+      50% { transform: scale(1.06) translateY(-2%); }
+      100% { transform: scale(1.02) translateY(0); }
+    }
+
+    /* decorative ring that expands under the photo */
+    .photo-ring {
+      position:absolute;
+      width: calc(100% + 36px);
+      height: calc(100% + 36px);
+      border-radius: 999px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%) scale(0.6);
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.03), rgba(255,255,255,0.0));
+      pointer-events: none;
+      opacity: 0;
+      animation: ringIn 1s ease-out 1.05s forwards;
+      z-index: 3;
+      box-shadow: 0 30px 60px rgba(75,0,160,0.06), 0 8px 20px rgba(0,0,0,0.6) inset;
+    }
+    @keyframes ringIn { to { transform: translate(-50%,-50%) scale(1); opacity: 1; } }
+
+    /* ---------- Right side: texts & labels ---------- */
+    .texts {
+      padding: 10px 0;
+      align-self: center;
+      z-index:4;
+    }
+    .title {
+      font-size: clamp(18px, 3.4vw, 40px);
+      line-height: 1.02;
+      font-weight:700;
+      letter-spacing: -0.01em;
+      margin-bottom: 12px;
+      min-height: 1.1em;
+    }
+    /* typewriter effect container */
+    .typewriter {
+      overflow: hidden;
+      display: inline-block;
+      white-space: nowrap;
+      border-right: 3px solid rgba(255,255,255,0.12);
+      padding-right: 6px;
+      animation: blinkCursor 1s steps(2, start) infinite;
+      opacity: 0;
+      transform: translateY(6px);
+      animation: showType 0.6s ease-out 1.4s forwards, typeText 3.2s steps(40,end) 1.6s forwards;
+    }
+    @keyframes blinkCursor { 50% { border-color: transparent; } }
+    @keyframes showType { to { opacity: 1; transform: translateY(0); } }
+    /* This keyframe doesn't move the text itself; JS will progressively set text for accurate typing. */
+    @keyframes typeText { to { /*no-op*/ } }
+
+    .subtitle {
+      margin-top: 12px;
+      font-size: clamp(12px, 1.8vw, 16px);
+      color: rgba(255,255,255,0.84);
+      opacity: 0;
+      transform: translateY(6px);
+      animation: subtitleIn 0.7s ease-out 2.9s forwards;
+    }
+    @keyframes subtitleIn { to { opacity: 1; transform: translateY(0); } }
+
+    /* small caption / timestamp in corner */
+    .meta {
+      margin-top: 26px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      opacity: 0;
+      animation: metaIn 0.7s ease-out 3.4s forwards;
+    }
+    @keyframes metaIn { to { opacity: 1; } }
+
+    /* progress bar at bottom of card to mimic video timeline */
+    .progress {
+      position: absolute;
+      left: 0; right: 0; bottom: -12px;
+      height:6px;
+      display:block;
+      margin: 0 auto;
+      width: calc(100% - 60px);
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      overflow:hidden;
+      z-index:5;
+      transform: translateY(0);
+    }
+    .progress > i {
+      display:block;
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, rgba(173,85,255,0.95), rgba(0,210,255,0.9));
+      border-radius:999px;
+      animation: prog 9s linear 0.9s forwards;
+    }
+    @keyframes prog { to { width: 100%; } }
+
+    /* ---------- Outro fade to black ---------- */
+    .outro {
+      position: absolute; inset: 0; background: rgba(0,0,0,0);
+      z-index: 7;
+      pointer-events:none;
+      animation: outroFade 9.2s linear forwards;
+    }
+    @keyframes outroFade { 
+      0% { background: rgba(0,0,0,0); }
+      85% { background: rgba(0,0,0,0); }
+      100% { background: rgba(0,0,0,1); }
+    }
+
+    /* ---------- Controls ---------- */
+    .controls {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 9;
+      display:flex;
+      gap:10px;
+    }
+    .btn {
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 0;
+      cursor: pointer;
+      font-weight:600;
+      backdrop-filter: blur(4px);
+    }
+
+    /* small responsive adjustments */
+    @media (max-width:900px) {
+      .card { grid-template-columns: 1fr; gap: 18px; padding: 22px; height: auto; }
+      .progress { width: calc(100% - 44px); bottom: -10px; }
+      .photo-wrap { padding-top: 12px; padding-bottom: 12px; }
+      .photo { width: clamp(180px, 44vw, 320px); height: clamp(180px, 44vw, 320px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage" role="main" aria-label="Video recreation stage">
+    <div class="bg"></div>
+    <div class="card" id="card">
+      <div class="photo-wrap">
+        <div class="photo-ring" aria-hidden="true"></div>
+
+        <!-- PHOTO: put your photo as "photo.jpg" next to this HTML file -->
+        <div class="photo" id="photo">
+          <img id="photoImg" src="photo.jpg" alt="Your photo">
+        </div>
+      </div>
+
+      <div class="texts" aria-hidden="false">
+        <!-- TITLE: the typewriter text will be populated by JS for accurate stepwise typing -->
+        <div class="title">
+          <span class="typewriter" id="typewriter"></span>
+        </div>
+
+        <!-- SUBTITLE -->
+        <div class="subtitle" id="subtitle">A short descriptive subtitle goes here.</div>
+
+        <!-- META -->
+        <div class="meta" id="meta">11/04/2025 • 0:12</div>
+
+      </div>
+
+      <!-- progress bar -->
+      <div class="progress" aria-hidden="true"><i></i></div>
+    </div>
+
+    <!-- controls -->
+    <div class="controls">
+      <button class="btn" id="restart">Restart</button>
+      <button class="btn" id="downloadPNG">Export Frame</button>
+    </div>
+
+    <div class="vignette" aria-hidden="true"></div>
+
+    <!-- intro overlay -->
+    <div class="intro-cover" id="introCover">Loading…</div>
+
+    <!-- outro fade -->
+    <div class="outro" aria-hidden="true"></div>
+  </div>
+
+  <script>
+    /********************************************************************
+     * Script orchestrates the sequence and provides a typewriter effect.
+     * Edit variables below to change text, timings, and image filename.
+     ********************************************************************/
+
+    // ------------ CONFIG: customize these ------------
+    const config = {
+      titleText: "Welcome to my story",        // main typewriter text
+      subtitleText: "Memories • Moments • Motion", // second line
+      metaText: "Nov 4, 2025 • 0:12",          // small meta / timestamp
+      totalDuration: 9200, // milliseconds matching animations (default ~9.2s)
+      // If your image filename is different, change it here (and also replace file in folder)
+      imageFileName: "photo.jpg"
+    };
+
+    // apply config texts (but the typewriter will animate the title)
+    document.getElementById('subtitle').textContent = config.subtitleText;
+    document.getElementById('meta').textContent = config.metaText;
+
+    // make sure image name is set
+    const photoImg = document.getElementById('photoImg');
+    photoImg.src = config.imageFileName;
+
+    // TYPEWRITER: show text one character at a time
+    const typeEl = document.getElementById('typewriter');
+    const fullText = config.titleText;
+    typeEl.textContent = ""; // start empty
+    // We'll drive typing using setInterval for exact control
+    function playTypewriter(speed = 45, delay = 1200) {
+      typeEl.textContent = "";
+      typeEl.style.borderRight = "3px solid rgba(255,255,255,0.12)";
+      let i = 0;
+      setTimeout(() => {
+        const t = setInterval(() => {
+          typeEl.textContent = fullText.slice(0, i+1);
+          i++;
+          if (i >= fullText.length) {
+            clearInterval(t);
+            // keep cursor blinking for a bit then remove border
+            setTimeout(() => { typeEl.style.borderRight = "0px solid transparent"; }, 800);
+          }
+        }, speed);
+      }, delay);
+    }
+
+    // Start sequence automatically
+    function startSequence() {
+      // restart progress animation by reflowing the element
+      const prog = document.querySelector('.progress > i');
+      prog.style.animation = 'none';
+      // force reflow
+      void prog.offsetWidth;
+      prog.style.animation = 'prog 9s linear 0.9s forwards';
+
+      // introCover will hide by its CSS animation already set; but reset opacity to show again quickly
+      const intro = document.getElementById('introCover');
+      intro.style.opacity = 1;
+      intro.style.visibility = 'visible';
+      intro.style.animation = 'introFade 1.2s ease-out 0.3s forwards';
+
+      // photo entry animation: re-trigger by removing inline transforms
+      const photo = document.getElementById('photo');
+      photo.style.animation = 'none';
+      void photo.offsetWidth;
+      photo.style.animation = 'photoIn 0.9s cubic-bezier(.2,.95,.2,1) 0.9s forwards';
+
+      const ring = document.querySelector('.photo-ring');
+      ring.style.animation = 'none';
+      void ring.offsetWidth;
+      ring.style.animation = 'ringIn 1s ease-out 1.05s forwards';
+
+      // photo pan animation
+      const img = document.getElementById('photoImg');
+      img.style.animation = 'none';
+      void img.offsetWidth;
+      img.style.animation = 'photoPan 8s ease-in-out 1.6s forwards';
+
+      // show subtitles with their CSS animation (they already have animation delays)
+      const subtitle = document.getElementById('subtitle');
+      subtitle.style.animation = 'subtitleIn 0.7s ease-out 2.9s forwards';
+      const meta = document.getElementById('meta');
+      meta.style.animation = 'metaIn 0.7s ease-out 3.4s forwards';
+
+      // typewriter
+      playTypewriter(42, 1400);
+
+      // outro: after duration, optionally show a "replay" hint (not required)
+      // We don't need further JS for outro since CSS fades to black at the end.
+    }
+
+    // Restart button
+    document.getElementById('restart').addEventListener('click', () => {
+      // reset relevant elements' inline styles and replay
+      document.getElementById('introCover').style.animation = 'none';
+      document.getElementById('introCover').style.opacity = 1;
+      // reset progress
+      document.querySelector('.progress > i').style.width = '0%';
+      // clear typewriter text then restart
+      document.getElementById('typewriter').textContent = '';
+      // slight delay to allow reflow
+      setTimeout(startSequence, 60);
+    });
+
+    // Export current frame as PNG (uses canvas)
+    document.getElementById('downloadPNG').addEventListener('click', async () => {
+      try {
+        const card = document.getElementById('card');
+        // render card using HTMLCanvasElement via drawImage of the card's computed background is limited
+        // We'll create a simple snapshot using html2canvas if available, else fallback alert.
+        if (window.html2canvas) {
+          const canvas = await html2canvas(card);
+          const url = canvas.toDataURL('image/png');
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'frame.png';
+          a.click();
+        } else {
+          alert('Export requires html2canvas library. To enable, add html2canvas and retry, or use screenshot tools.');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Could not export frame: ' + e.message);
+      }
+    });
+
+    // Auto-start when page loaded
+    window.addEventListener('load', () => {
+      // Preload image to avoid blank frames
+      const img = new Image();
+      img.src = config.imageFileName;
+      img.onload = () => { startSequence(); };
+      img.onerror = () => {
+        // If image fails, use a colored placeholder
+        document.getElementById('photoImg').src = '';
+        document.getElementById('photoImg').style.background = 'linear-gradient(135deg,#6b0f9c,#1bb5fd)';
+        startSequence();
+      };
+    });
+
+    // Optional: if you want the sequence to loop automatically, uncomment below:
+    // setInterval(() => { document.getElementById('restart').click(); }, config.totalDuration + 200);
+
+  </script>
+</body>
+</html>
